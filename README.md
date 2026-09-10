@@ -1,0 +1,126 @@
+# GeoQuiz - Kahoot-style Quiz with Map Questions
+
+A real-time multiplayer quiz game inspired by Kahoot, featuring Saterra/GeoGuessr-style map-based questions using Google Maps.
+
+## Features
+
+- **Host & Join Flow**: Create games with PIN codes, players join via 6-digit code
+- **Map Questions**: Click on Google Maps to guess locations (Saterra-style)
+- **Multiple Choice**: Traditional quiz questions
+- **Real-time Scoring**: Live leaderboard with distance-based scoring for map questions
+- **Dark Theme**: Sleek dark UI with neon accents
+
+## Tech Stack
+
+- **Frontend**: React 18 + Leaflet + OpenStreetMap
+- **Backend**: Node.js + Express + Socket.io
+- **Real-time**: WebSocket communication for live gameplay
+
+## Setup
+
+### 1. Map Setup
+
+The client uses Leaflet with OpenStreetMap tiles. No API key or billing account is required. The map includes the required OpenStreetMap attribution and is intended for light development and personal use.
+
+### 2. Configure Environment
+
+```bash
+cd client
+# No environment variables are required for the map.
+```
+
+### 3. Install Dependencies
+
+```bash
+# Server
+cd server
+npm install
+
+# Client
+cd ../client
+npm install
+```
+
+### 4. Run the App
+
+**Terminal 1 - Start Server:**
+```bash
+cd server
+npm start
+# Runs on http://localhost:3001
+```
+
+**Terminal 2 - Start Client:**
+```bash
+cd client
+npm start
+# Runs on http://localhost:3000
+```
+
+## How to Play
+
+1. **Host**: Click "Host a Game" → "Create Game" → Share the 6-digit PIN
+2. **Players**: Click "Join Game" → Enter PIN + Name → Wait for host
+3. **Host**: Click "Start Game" when ready
+4. **Answer Questions**:
+   - **Map Questions**: Click on the map to place your guess pin, then "Submit Guess"
+   - **Multiple Choice**: Click an option to answer
+5. **Scoring**:
+   - Map: Points based on distance from correct location + time bonus
+   - Multiple Choice: Points for correct answer + time bonus
+6. **Results**: See correct answer, your score, and leaderboard after each question
+
+## Project Structure
+
+```
+geoquiz/
+├── server/
+│   ├── index.js          # Express + Socket.io server
+│   └── package.json
+└── client/
+    ├── public/
+    │   └── index.html
+    ├── src/
+    │   ├── index.js      # React entry
+    │   ├── App.js        # Main app component
+    │   └── App.css       # Styles
+    ├── package.json
+    └── .env.example
+```
+
+## Customizing Questions
+
+Edit `SAMPLE_QUIZ` in `client/src/App.js`:
+
+```javascript
+const SAMPLE_QUIZ = {
+  title: 'Your Quiz Title',
+  questions: [
+    {
+      type: 'map',
+      prompt: 'Find this location',
+      correctLocation: { lat: 48.8584, lng: 2.2945 },
+      correctRadius: 5000,      // meters for "correct"
+      maxDistance: 10000000,    // max distance for scoring
+      timeLimit: 30             // seconds
+    },
+    {
+      type: 'multiple-choice',
+      prompt: 'Question text',
+      options: ['Option A', 'Option B', 'Option C', 'Option D'],
+      correctAnswer: 0,         // index of correct option
+      timeLimit: 20
+    }
+  ]
+};
+```
+
+## Map Question Scoring
+
+- **Distance Score**: Up to 1000 pts based on proximity (closer = more points)
+- **Time Bonus**: Up to 500 pts for answering quickly
+- **Correct Radius**: Within this distance = "correct" badge
+
+## License
+
+MIT
