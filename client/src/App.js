@@ -4,7 +4,7 @@ import { CircleMarker, MapContainer, Polyline, TileLayer, useMap, useMapEvents }
 import 'leaflet/dist/leaflet.css';
 import './App.css';
 
-const SOCKET_URL = 'http://localhost:3001';
+const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:3001';
 
 const DISTRICT_GROUPS = [
   {
