@@ -362,8 +362,14 @@ function App() {
     }
   };
 
-  const handleJoinGame = () => {
-    if (!socket || !gamePin.trim() || !playerName.trim()) return;
+  const handleJoinGame = (event) => {
+    if (event) event.preventDefault();
+    if (!socket || !gamePin.trim() || !playerName.trim()) {
+      if (!socket) {
+        alert('Belum terhubung ke server. Pastikan server berjalan di http://localhost:3001');
+      }
+      return;
+    }
     socket.emit('join-game', { pin: gamePin, name: playerName }, (response) => {
       if (response.success) {
         setPlayerId(response.playerId);
@@ -498,30 +504,35 @@ function App() {
       <div className="screen join">
         <div className="container">
           <h2>Join Game</h2>
-          <div className="form-group">
-            <label>Game PIN</label>
-            <input
-              type="text"
-              maxLength={6}
-              value={gamePin}
-              onChange={(e) => setGamePin(e.target.value.toUpperCase())}
-              placeholder="XXXXXX"
-              className="pin-input"
-            />
-          </div>
-          <div className="form-group">
-            <label>Your Name</label>
-            <input
-              type="text"
-              value={playerName}
-              onChange={(e) => setPlayerName(e.target.value)}
-              placeholder="Enter your name"
-            />
-          </div>
-          <button className="btn btn-primary btn-large" onClick={handleJoinGame} disabled={!gamePin || !playerName}>
-            Join
-          </button>
-          <button className="btn btn-secondary" onClick={() => setScreen('home')}>
+          <form onSubmit={handleJoinGame}>
+            <div className="form-group">
+              <label>Game PIN</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                value={gamePin}
+                onChange={(e) => setGamePin(e.target.value.toUpperCase())}
+                placeholder="XXXXXX"
+                className="pin-input"
+                autoComplete="off"
+              />
+            </div>
+            <div className="form-group">
+              <label>Your Name</label>
+              <input
+                type="text"
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
+                placeholder="Enter your name"
+              />
+            </div>
+            <button type="submit" className="btn btn-primary btn-large" disabled={!gamePin || !playerName}>
+              Join
+            </button>
+          </form>
+          <button type="button" className="btn btn-secondary" onClick={() => setScreen('home')}>
             Back
           </button>
         </div>

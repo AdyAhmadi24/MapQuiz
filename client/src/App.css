@@ -64,6 +64,8 @@ body {
   transition: all 0.2s ease;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .btn:disabled {
@@ -420,6 +422,11 @@ h2 {
 }
 
 @media (max-width: 600px) {
+  .screen.join {
+    align-items: flex-start;
+    padding-top: max(2rem, env(safe-area-inset-top));
+  }
+
   .screen.game {
     align-items: stretch;
     padding: 0;
