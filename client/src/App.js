@@ -440,8 +440,8 @@ function App() {
     return (
       <div className="screen home">
         <div className="container">
-          <h1 className="title">GeoQuiz</h1>
-          <p className="subtitle">Kahoot-style quiz with Saterra map questions</p>
+          <h1 className="title">Jakarta Satu Quiz</h1>
+          <p className="subtitle">Secanggih apa pengetahuan lo!</p>
           
           <div className="button-group">
             <button className="btn btn-primary btn-large" onClick={() => setScreen('host-setup')}>
