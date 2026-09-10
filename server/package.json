@@ -1,0 +1,16 @@
+{
+  "name": "geoquiz-server",
+  "version": "1.0.0",
+  "description": "Backend for GeoQuiz - Kahoot-style quiz with map questions",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5",
+    "cors": "^2.8.5",
+    "uuid": "^9.0.1"
+  }
+}
