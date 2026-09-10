@@ -74,7 +74,7 @@ function createJakartaQuiz() {
         correctAnswer: options.indexOf(city),
         district,
         city,
-        timeLimit: 5
+        timeLimit: 10
       };
     })
   );
@@ -90,13 +90,13 @@ function createDistrictMapQuiz() {
   return {
     title: 'GeoQuiz Pin Lokasi Kecamatan DKI Jakarta',
     gameType: 'district-map',
-    questions: shuffle(DISTRICT_LOCATIONS).slice(0, 15).map(({ district, lat, lng }) => ({
+    questions: shuffle(DISTRICT_LOCATIONS).slice(0, 10).map(({ district, lat, lng }) => ({
       type: 'map',
       prompt: district,
       correctLocation: { lat, lng },
       correctRadius: 3000,
       maxDistance: 50000,
-      timeLimit: 15
+      timeLimit: 20
     }))
   };
 }
@@ -441,7 +441,7 @@ function App() {
       <div className="screen home">
         <div className="container">
           <h1 className="title">Jakarta Satu Quiz</h1>
-          <p className="subtitle">Secanggih apa pengetahuan lo!</p>
+          <p className="subtitle">Semantep apa pengetahuan lo!</p>
           
           <div className="button-group">
             <button className="btn btn-primary btn-large" onClick={() => setScreen('host-setup')}>
