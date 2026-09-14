@@ -266,6 +266,7 @@ function App() {
   const [gameState, setGameState] = useState('lobby');
   const [myScore, setMyScore] = useState(0);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [persistentScoreboard, setPersistentScoreboard] = useState([]);
   const [questionResults, setQuestionResults] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [mapClicked, setMapClicked] = useState(false);
@@ -389,6 +390,14 @@ function App() {
       setGameState('ended');
       setShowResults(true);
       if (timerRef.current) clearInterval(timerRef.current);
+      if (!isExhibitionMode) {
+        fetch(`${SOCKET_URL}/api/scoreboard?limit=10`)
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) setPersistentScoreboard(data.scoreboard);
+          })
+          .catch(() => setPersistentScoreboard([]));
+      }
     });
 
     return () => {
@@ -417,7 +426,10 @@ function App() {
       return;
     }
     setIsHost(true);
-    socket.emit('create-game', quizData, (response) => {
+    socket.emit('create-game', {
+      ...quizData,
+      persistence: isExhibitionMode ? 'none' : 'persistent'
+    }, (response) => {
       if (response.success) {
         setGamePin(response.game.pin);
         setScreen('lobby');
@@ -523,6 +535,21 @@ function App() {
     socket.emit('next-question', gamePin);
   };
 
+  const handleOpenScoreboard = () => {
+    setPersistentScoreboard([]);
+    setScreen('scoreboard');
+    fetch(`${SOCKET_URL}/api/scoreboard?limit=20`)
+      .then((response) => {
+        if (!response.ok) throw new Error('Scoreboard unavailable');
+        return response.json();
+      })
+      .then((data) => {
+        if (!data.success) throw new Error('Scoreboard unavailable');
+        setPersistentScoreboard(data.scoreboard);
+      })
+      .catch(() => setPersistentScoreboard(null));
+  };
+
   // Render different screens
   if (screen === 'home') {
     return (
@@ -542,7 +569,38 @@ function App() {
             }}>
               Online Mode
             </button>
+            <button className="btn btn-secondary btn-large" onClick={handleOpenScoreboard}>
+              Scoreboard
+            </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (screen === 'scoreboard') {
+    return (
+      <div className="screen ended">
+        <div className="container">
+          <h2>Scoreboard Permanen</h2>
+          {persistentScoreboard === null ? (
+            <p className="subtitle">Scoreboard tidak dapat dimuat. Pastikan server berjalan.</p>
+          ) : persistentScoreboard.length === 0 ? (
+            <p className="subtitle">Belum ada skor tersimpan.</p>
+          ) : (
+            <ol className="final-leaderboard">
+              {persistentScoreboard.map((player, index) => (
+                <li key={`${player.name}-${index}`} className={index < 3 ? `top-${index + 1}` : ''}>
+                  <span className="rank">#{index + 1}</span>
+                  <span className="name">{player.name}</span>
+                  <span className="score">{player.score} pts</span>
+                </li>
+              ))}
+            </ol>
+          )}
+          <button className="btn btn-secondary" onClick={() => setScreen('home')}>
+            Back
+          </button>
         </div>
       </div>
     );
@@ -940,6 +998,20 @@ function App() {
               </li>
             ))}
           </ol>
+          {!isExhibitionMode && (
+            <>
+              <h3>Scoreboard Permanen</h3>
+              <ol className="final-leaderboard">
+                {persistentScoreboard.map((player, index) => (
+                  <li key={`${player.name}-${index}`} className={index < 3 ? `top-${index + 1}` : ''}>
+                    <span className="rank">#{index + 1}</span>
+                    <span className="name">{player.name}</span>
+                    <span className="score">{player.score} pts</span>
+                  </li>
+                ))}
+              </ol>
+            </>
+          )}
           <button className="btn btn-primary btn-large" onClick={() => {
             setScreen('home');
             setGamePin('');
@@ -952,6 +1024,7 @@ function App() {
             setCurrentQuestion(null);
             setMyScore(0);
             setLeaderboard([]);
+            setPersistentScoreboard([]);
             setQuestionResults(null);
           }}>
             Play Again
