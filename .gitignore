@@ -3,5 +3,6 @@ dist/
 build/
 *.log
 .env
+server/data/
 .DS_Store
 Thumbs.db

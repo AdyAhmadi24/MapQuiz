@@ -87,6 +87,30 @@ Open `http://HOST_IP:3000` on the host and player devices, for example `http://1
 
 If Windows Firewall asks for access, allow Node.js on the private network. The map game still requires map tiles from OpenStreetMap unless map tiles are cached or hosted locally.
 
+## Persistent Scoreboard
+
+The server stores completed game results in PostgreSQL. Player names and final scores are saved when the host finishes a game, and remain available after the server restarts.
+
+Set the PostgreSQL connection string before starting the server:
+
+```powershell
+$env:DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE"
+cd server
+npm start
+```
+
+The server creates the `game_results` table and its index automatically on startup.
+
+Only games created from **Online Mode** are saved to PostgreSQL and included in the permanent scoreboard. **Exhibition Mode** uses the server only for the live game session; its names and scores are not written to PostgreSQL and are not shown in the permanent scoreboard.
+
+The top scores can also be read from:
+
+```text
+GET http://HOST_IP:3001/api/scoreboard?limit=20
+```
+
+Use a managed PostgreSQL provider for deployment and keep `DATABASE_URL` in the provider's environment variables. Do not commit database credentials.
+
 ## How to Play
 
 1. **Host**: Click "Host a Game" → "Create Game" → Share the 6-digit PIN
