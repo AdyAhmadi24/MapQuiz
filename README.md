@@ -57,6 +57,36 @@ npm start
 # Runs on http://localhost:3000
 ```
 
+## Exhibition Mode on a Local Network
+
+Exhibition Mode supports multiple devices without internet by using the host laptop as a local server. Connect the host laptop and player devices to the same Wi-Fi or hotspot.
+
+On Windows PowerShell, find the host laptop IP address:
+
+```powershell
+ipconfig
+# Use the IPv4 Address, for example 192.168.1.25
+```
+
+Start the server so it accepts LAN connections:
+
+```powershell
+cd server
+npm start
+```
+
+Start the client on all network interfaces:
+
+```powershell
+cd client
+$env:HOST="0.0.0.0"
+npm start
+```
+
+Open `http://HOST_IP:3000` on the host and player devices, for example `http://192.168.1.25:3000`. Choose **Exhibition Mode**. The host selects **Host a Game**, creates a PIN, and players select **Join Game** and enter that PIN. The game data, PIN, and scoring are handled by the local server; internet is not required.
+
+If Windows Firewall asks for access, allow Node.js on the private network. The map game still requires map tiles from OpenStreetMap unless map tiles are cached or hosted locally.
+
 ## How to Play
 
 1. **Host**: Click "Host a Game" → "Create Game" → Share the 6-digit PIN

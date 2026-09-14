@@ -4,7 +4,8 @@ import { CircleMarker, MapContainer, Polyline, TileLayer, useMap, useMapEvents }
 import 'leaflet/dist/leaflet.css';
 import './App.css';
 
-const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:3001';
+const SOCKET_URL = process.env.REACT_APP_SOCKET_URL
+  || (typeof window !== 'undefined' ? `http://${window.location.hostname}:3001` : 'http://localhost:3001');
 
 const DISTRICT_GROUPS = [
   {
@@ -101,8 +102,78 @@ function createDistrictMapQuiz() {
   };
 }
 
+const LANDMARK_QUESTIONS = [
+  {
+    landmark: 'Monas',
+    district: 'Gambir',
+    image: '/landmarks/monas.jpg',
+    cropPosition: 'center 35%'
+  },
+  {
+    landmark: 'Jakarta International Stadium',
+    district: 'Tanjung Priok',
+    image: '/landmarks/jis.jpg',
+    cropPosition: 'center center'
+  },
+  {
+    landmark: 'Kota Tua Jakarta',
+    district: 'Pinangsia',
+    image: 'https://commons.wikimedia.org/wiki/Special:FilePath/Kota%20Tua%20Jakarta.jpg',
+    cropPosition: 'center center'
+  },
+  {
+    landmark: 'Masjid Istiqlal',
+    district: 'Pasar Baru',
+    image: 'https://commons.wikimedia.org/wiki/Special:FilePath/Masjid%20Istiqlal%20Jakarta.jpg',
+    cropPosition: 'center 40%'
+  },
+  {
+    landmark: 'Taman Mini Indonesia Indah',
+    district: 'Cipayung',
+    image: 'https://commons.wikimedia.org/wiki/Special:FilePath/Taman%20Mini%20Indonesia%20Indah.jpg',
+    cropPosition: 'center center'
+  },
+  {
+    landmark: 'Ragunan',
+    district: 'Pasar Minggu',
+    image: 'https://commons.wikimedia.org/wiki/Special:FilePath/Ragunan%20Zoo.jpg',
+    cropPosition: 'center center'
+  }
+];
+
+function createLandmarkQuiz({ offlineOnly = false } = {}) {
+  const landmarkNames = LANDMARK_QUESTIONS.map(({ landmark }) => landmark);
+  const questions = offlineOnly
+    ? LANDMARK_QUESTIONS.filter(({ image }) => image.startsWith('/'))
+    : LANDMARK_QUESTIONS;
+
+  return {
+    title: 'Tebak Landmark Jakarta',
+    gameType: 'jakarta-landmark',
+    questions: shuffle(questions).map(({ landmark, district, image, cropPosition }) => {
+      const options = shuffle([
+        landmark,
+        ...shuffle(landmarkNames.filter((name) => name !== landmark)).slice(0, 3)
+      ]);
+
+      return {
+        type: 'multiple-choice',
+        prompt: 'Landmark apakah yang terlihat pada potongan gambar ini?',
+        image,
+        cropPosition,
+        options,
+        correctAnswer: options.indexOf(landmark),
+        landmark,
+        district,
+        timeLimit: 15
+      };
+    })
+  };
+}
+
 const SAMPLE_QUIZ = createJakartaQuiz();
 const DISTRICT_MAP_QUIZ = createDistrictMapQuiz();
+const LANDMARK_QUIZ = createLandmarkQuiz();
 
 const GAME_OPTIONS = [
   {
@@ -120,10 +191,11 @@ const GAME_OPTIONS = [
     available: true
   },
   {
-    id: 'coming-soon',
-    title: 'Game Berikutnya',
-    description: 'Mode permainan ketiga sedang dalam perencanaan.',
-    available: false
+    id: 'jakarta-landmark',
+    title: 'Tebak Landmark Jakarta',
+    description: 'Tebak nama landmark Jakarta dari potongan foto.',
+    questionCount: LANDMARK_QUIZ.questions.length,
+    available: true
   }
 ];
 
@@ -178,6 +250,8 @@ function QuizMap({ guessedLocation, correctLocation, showResults, onMapClick }) 
 
 function App() {
   const [screen, setScreen] = useState('home');
+  const [isExhibitionMode, setIsExhibitionMode] = useState(false);
+  const [onlineModeStarted, setOnlineModeStarted] = useState(false);
   const [socket, setSocket] = useState(null);
   const [gamePin, setGamePin] = useState('');
   const [playerName, setPlayerName] = useState('');
@@ -233,9 +307,11 @@ function App() {
       answer: null,
       timeRemaining: 0
     });
-  }, [timeRemaining, gameState, currentQuestion, showResults, socket, playerId, gamePin]);
+  }, [timeRemaining, gameState, currentQuestion, showResults, socket, playerId, gamePin, isExhibitionMode]);
 
   useEffect(() => {
+    if (!onlineModeStarted) return undefined;
+
     const newSocket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
     setSocket(newSocket);
 
@@ -319,7 +395,7 @@ function App() {
       newSocket.close();
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, []);
+  }, [onlineModeStarted]);
 
   const startTimer = (limit) => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -351,6 +427,14 @@ function App() {
     });
   };
 
+  const handleStartExhibition = () => {
+    setIsExhibitionMode(true);
+    setOnlineModeStarted(true);
+    setSelectedGameId('district-city');
+    setQuizData(SAMPLE_QUIZ);
+    setScreen('exhibition-menu');
+  };
+
   const handleGameSelect = (gameId) => {
     if (gameId === 'district-city') {
       setQuizData(SAMPLE_QUIZ);
@@ -358,6 +442,10 @@ function App() {
     }
     if (gameId === 'district-map') {
       setQuizData(DISTRICT_MAP_QUIZ);
+      setSelectedGameId(gameId);
+    }
+    if (gameId === 'jakarta-landmark') {
+      setQuizData(isExhibitionMode ? createLandmarkQuiz({ offlineOnly: true }) : LANDMARK_QUIZ);
       setSelectedGameId(gameId);
     }
   };
@@ -444,11 +532,141 @@ function App() {
           <p className="subtitle">Semantep apa pengetahuan lo!</p>
           
           <div className="button-group">
+            <button className="btn btn-primary btn-large" onClick={handleStartExhibition}>
+              Exhibition Mode
+            </button>
+            <button className="btn btn-secondary btn-large" onClick={() => {
+              setIsExhibitionMode(false);
+              setOnlineModeStarted(true);
+              setScreen('online-menu');
+            }}>
+              Online Mode
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (screen === 'exhibition-menu') {
+    return (
+      <div className="screen home">
+        <div className="container">
+          <h2>Exhibition Mode</h2>
+          <p className="subtitle">Mode lokal untuk pameran, tanpa server.</p>
+          <div className="button-group">
+            <button className="btn btn-primary btn-large" onClick={() => setScreen('exhibition-host-setup')}>
+              Host a Game
+            </button>
+            <button className="btn btn-secondary btn-large" onClick={() => setScreen('exhibition-join')}>
+              Join Game
+            </button>
+            <button className="btn btn-secondary" onClick={() => setScreen('home')}>
+              Back
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (screen === 'exhibition-join') {
+    return (
+      <div className="screen join">
+        <div className="container">
+          <h2>Join Exhibition Game</h2>
+          <p className="subtitle">Masukkan PIN yang dibuat oleh host.</p>
+          <form onSubmit={(event) => {
+            setIsExhibitionMode(true);
+            handleJoinGame(event);
+          }}>
+            <div className="form-group">
+              <label>Game PIN</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                value={gamePin}
+                onChange={(event) => setGamePin(event.target.value.replace(/\D/g, ''))}
+                placeholder="XXXXXX"
+                className="pin-input"
+                autoComplete="off"
+              />
+            </div>
+            <div className="form-group">
+              <label>Your Name</label>
+              <input
+                type="text"
+                value={playerName}
+                onChange={(event) => setPlayerName(event.target.value)}
+                placeholder="Enter your name"
+              />
+            </div>
+            <button type="submit" className="btn btn-primary btn-large" disabled={!gamePin || !playerName}>
+              Join Game
+            </button>
+          </form>
+          <button className="btn btn-secondary" onClick={() => setScreen('exhibition-menu')}>
+            Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (screen === 'exhibition-host-setup') {
+    return (
+      <div className="screen host-setup">
+        <div className="container">
+          <h2>Choose a Game</h2>
+          <div className="game-options" role="list" aria-label="Exhibition game options">
+            {GAME_OPTIONS.map((game) => (
+              <button
+                key={game.id}
+                type="button"
+                className={`game-option ${selectedGameId === game.id ? 'selected' : ''}`}
+                onClick={() => handleGameSelect(game.id)}
+                aria-pressed={selectedGameId === game.id}
+              >
+                <span className="game-option-header">
+                  <strong>{game.title}</strong>
+                  <span className="game-status available">Ready</span>
+                </span>
+                <span className="game-option-description">{game.description}</span>
+                <span className="game-option-meta">{game.questionCount} questions</span>
+              </button>
+            ))}
+          </div>
+          <div className="quiz-preview">
+            <h3>{quizData.title}</h3>
+            <p>{quizData.questions.length} questions</p>
+          </div>
+          <button className="btn btn-primary btn-large" onClick={handleCreateGame}>
+            Create Game
+          </button>
+          <button className="btn btn-secondary" onClick={() => setScreen('exhibition-menu')}>
+            Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (screen === 'online-menu') {
+    return (
+      <div className="screen home">
+        <div className="container">
+          <h2>Online Mode</h2>
+          <div className="button-group">
             <button className="btn btn-primary btn-large" onClick={() => setScreen('host-setup')}>
               Host a Game
             </button>
             <button className="btn btn-secondary btn-large" onClick={() => setScreen('join')}>
               Join Game
+            </button>
+            <button className="btn btn-secondary" onClick={() => setScreen('home')}>
+              Back
             </button>
           </div>
         </div>
@@ -634,18 +852,30 @@ function App() {
             )}
 
             {currentQuestion.type === 'multiple-choice' && (
-              <div className="options-grid">
-                {currentQuestion.options.map((option, i) => (
-                  <button
-                    key={i}
-                    className="option-btn"
-                    onClick={() => handleOptionSelect(i)}
-                    disabled={showResults}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
+              <>
+                {currentQuestion.image && (
+                  <div className="landmark-image-frame">
+                    <img
+                      className="landmark-image"
+                      src={currentQuestion.image}
+                      alt="Potongan gambar landmark Jakarta"
+                      style={{ objectPosition: currentQuestion.cropPosition || 'center' }}
+                    />
+                  </div>
+                )}
+                <div className="options-grid">
+                  {currentQuestion.options.map((option, i) => (
+                    <button
+                      key={i}
+                      className="option-btn"
+                      onClick={() => handleOptionSelect(i)}
+                      disabled={showResults}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         )}
@@ -686,7 +916,7 @@ function App() {
           </div>
         )}
 
-        {isHost && showResults && (
+        {(isHost || isExhibitionMode) && showResults && (
           <button className="btn btn-primary next-btn" onClick={handleNextQuestion}>
             Next Question
           </button>
@@ -716,6 +946,7 @@ function App() {
             setPlayerName('');
             setPlayerId(null);
             setIsHost(false);
+            setIsExhibitionMode(false);
             setGameState('lobby');
             setPlayers([]);
             setCurrentQuestion(null);
