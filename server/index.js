@@ -3,10 +3,25 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
+const { getScoreboard, initializeDatabase, saveGameResults } = require('./database');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+app.get('/api/scoreboard', async (req, res) => {
+  const requestedLimit = Number.parseInt(req.query.limit, 10);
+  const limit = Number.isInteger(requestedLimit)
+    ? Math.min(Math.max(requestedLimit, 1), 100)
+    : 20;
+
+  try {
+    res.json({ success: true, scoreboard: await getScoreboard(limit) });
+  } catch (error) {
+    console.error('Unable to load scoreboard:', error);
+    res.status(500).json({ success: false, error: 'Unable to load scoreboard' });
+  }
+});
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -34,6 +49,7 @@ function createGame(hostId, quizData) {
     scores: new Map(),
     answers: new Map(),
     nextQuestionLocked: false,
+    resultsSaved: false,
     createdAt: Date.now()
   };
   games.set(pin, game);
@@ -250,7 +266,23 @@ io.on('connection', (socket) => {
       const leaderboard = Array.from(game.players.values())
         .map(p => ({ id: p.id, name: p.name, score: game.scores.get(p.id) || 0 }))
         .sort((a, b) => b.score - a.score);
-      io.to(pin).emit('game-ended', { leaderboard });
+      const finishGame = () => io.to(pin).emit('game-ended', { leaderboard });
+
+      if (game.quizData.persistence === 'none') {
+        finishGame();
+      } else {
+        saveGameResults({
+          gamePin: game.pin,
+          gameType: game.quizData.gameType || 'unknown',
+          gameTitle: game.quizData.title || 'GeoQuiz',
+          players: leaderboard
+        })
+          .then(finishGame)
+          .catch((error) => {
+            console.error(`Unable to save results for game ${pin}:`, error);
+            finishGame();
+          });
+      }
     } else {
       const question = game.quizData.questions[game.currentQuestionIndex];
       io.to(pin).emit('new-question', { 
@@ -305,6 +337,13 @@ function endQuestion(pin) {
 }
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT} on all network interfaces`);
-});
+initializeDatabase()
+  .then(() => {
+    server.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on port ${PORT} on all network interfaces`);
+    });
+  })
+  .catch((error) => {
+    console.error('Unable to initialize PostgreSQL:', error);
+    process.exit(1);
+  });
