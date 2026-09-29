@@ -296,6 +296,8 @@ function App() {
   const [showResults, setShowResults] = useState(false);
   const [waitingForPlayers, setWaitingForPlayers] = useState(false);
   const [hasSubmittedAnswer, setHasSubmittedAnswer] = useState(false);
+  const [isServerConnected, setIsServerConnected] = useState(false);
+  const [socketError, setSocketError] = useState(null);
   const [answerProgress, setAnswerProgress] = useState({ answeredPlayers: 0, totalPlayers: 0 });
   const timerRef = useRef(null);
   const timerStartedRef = useRef(false);
@@ -341,11 +343,17 @@ function App() {
     const newSocket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
     setSocket(newSocket);
 
-    newSocket.on('connect', () => console.log('Connected to server'));
-    newSocket.on('connect_error', () => {
-      console.error('Unable to connect to the GeoQuiz server');
+    newSocket.on('connect', () => {
+      setIsServerConnected(true);
+      setSocketError(null);
     });
-    newSocket.on('disconnect', () => console.log('Disconnected'));
+    newSocket.on('connect_error', (error) => {
+      setSocketError(error.message || 'Unable to connect to the GeoQuiz server');
+      setIsServerConnected(false);
+    });
+    newSocket.on('disconnect', () => {
+      setIsServerConnected(false);
+    });
 
     newSocket.on('player-joined', ({ players: updatedPlayers }) => {
       setPlayers(updatedPlayers);
@@ -453,8 +461,15 @@ function App() {
   };
 
   const handleCreateGame = () => {
-    if (!socket || !socket.connected) {
+    if (!socket) {
       alert('Server belum terhubung. Jalankan server dengan: cd server lalu npm start');
+      return;
+    }
+    if (!isServerConnected) {
+      const msg = socketError
+        ? `Server tidak dapat dihubungkan: ${socketError}`
+        : 'Menunggu koneksi server...';
+      alert(msg);
       return;
     }
     setIsHost(true);
@@ -500,6 +515,13 @@ function App() {
       if (!socket) {
         alert('Belum terhubung ke server. Pastikan server berjalan di http://localhost:3001');
       }
+      return;
+    }
+    if (!isServerConnected) {
+      const msg = socketError
+        ? `Server tidak dapat dihubungkan: ${socketError}`
+        : 'Menunggu koneksi server...';
+      alert(msg);
       return;
     }
     socket.emit('join-game', { pin: gamePin, name: playerName }, (response) => {
@@ -748,6 +770,13 @@ function App() {
       <div className="screen home">
         <div className="container">
           <h2>Online Mode</h2>
+          {socketError ? (
+            <p className="connection-error">Connection failed: {socketError}</p>
+          ) : isServerConnected ? (
+            <p className="connection-status connected">Server connected</p>
+          ) : (
+            <p className="connection-status connecting">Connecting to server...</p>
+          )}
           <div className="button-group">
             <button className="btn btn-primary btn-large" onClick={() => setScreen('host-setup')}>
               Host a Game
@@ -796,8 +825,12 @@ function App() {
             <h3>{quizData.title}</h3>
             <p>{quizData.questions.length} questions</p>
           </div>
-          <button className="btn btn-primary btn-large" onClick={handleCreateGame}>
-            Create Game
+          <button
+            className="btn btn-primary btn-large"
+            onClick={handleCreateGame}
+            disabled={!isServerConnected}
+          >
+            {isServerConnected ? 'Create Game' : 'Connecting...'}
           </button>
           <button className="btn btn-secondary" onClick={() => setScreen('home')}>
             Back
